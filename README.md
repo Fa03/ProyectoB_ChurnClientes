@@ -1,24 +1,31 @@
-# Proyecto A: Sistema de Predicción de Riesgo Crediticio
+# Proyecto A: Sistema de Predicción de Abandono de Clientes
 
 ## 👥 Equipo
-- **Integrante 1**: [Nombre]
-- **Integrante 2**: [Nombre]
-- **Integrante 3**: [Nombre]
+- **Integrante 1**: [Sharon Obando Gómez ]
+- **Integrante 2**: [Marco Alvares Quiros]
+- **Integrante 3**: [Fabián Brenes Loría]
 
 ## 📋 Descripción del Proyecto
-Sistema inteligente de IA que predice el riesgo crediticio de clientes bancarios para apoyar decisiones de aprobación de préstamos.
+Creación de un sistema que prediga qué clientes tienen mayor probabilidad de
+abandonar un servicio de telecomunicaciones e identificar clientes en
+riesgo clasificandolos por nivel de urgencia para implementar estrategias de retención.
 
 ## 🎯 Objetivos
-- Implementar análisis exploratorio de datos financieros
-- Desarrollar modelos de clasificación binaria y multiclase con ANN
-- Crear API REST para servir predicciones
-- Diseñar frontend interactivo con Streamlit
+- Realizar análisis exploratorio de datos (EDA) con visualizaciones profesionales
+- Implementar preprocesamiento de datos para modelos de machine learning
+- Diseñar, entrenar y evaluar redes neuronales artificiales (ANN)
+- Comparar múltiples modelos y seleccionar el óptimo según métricas
+- Desplegar modelos en producción mediante API REST con FastAPI
+- Crear interfaces de usuario con Streamlit
+- Documentar proyectos de forma profesional
 
 ## 📊 Dataset
-- **Fuente**: German Credit Data (UCI Machine Learning Repository)
-- **URL**: https://archive.ics.uci.edu/dataset/144/statlog+german+credit+data
-- **Registros**: 1,000 clientes
-- **Variables**: 20 (demográficas, financieras, historial crediticio)
+- **Fuente**: Telco Customer Churn KAGGLE
+- **URL**: https://archive.ics.uci.edu/dataset/144/statlog+german+credit+data](https://www.kaggle.com/datasets/blastchar/telco-customer-churn
+- **Registros**: 7,043 clientes
+- **Variables**: 21 (demográficas, servicios contratados, información de cuenta)
+- **Variables principales**: antigüedad del cliente, tipo de contrato, método de pago, cargos
+mensuales, servicios adicionales (internet, streaming, seguridad),
 
 ## 🔧 Instalación
 
