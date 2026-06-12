@@ -1,9 +1,16 @@
-# Proyecto A: Sistema de Predicción de Abandono de Clientes
+# Proyecto B: Sistema de Predicción de Abandono de Clientes
+
+[![Carga de datos](https://img.shields.io/badge/Cargar%20datos-CSV-4CAF50?style=for-the-badge&logo=files)]()
+[![Limpieza de datos](https://img.shields.io/badge/Limpieza%20y%20EDA-Procesamiento-2196F3?style=for-the-badge&logo=databricks)]()   
+[![Modelado supervisado](https://img.shields.io/badge/Modelado-Supervisado-FF9800?style=for-the-badge&logo=mlflow)]()  
+[![Documentación](https://img.shields.io/badge/Documentación-Notebook-795548?style=for-the-badge&logo=jupyter)]()  
+[![Dashboard](https://img.shields.io/badge/Dashboard-Streamlit-E91E63?style=for-the-badge&logo=streamlit)]()  
+[![API](https://img.shields.io/badge/🔌_API-Disponible-blue?style=for-the-badge)]()
 
 ## 👥 Equipo
-- **Integrante 1**: [Sharon Obando Gómez ]
-- **Integrante 2**: [Marco Alvares Quiros]
-- **Integrante 3**: [Fabián Brenes Loría]
+- **Integrante 1**: Sharon Obando Gómez 
+- **Integrante 2**: Marco Alvarez Quiros
+- **Integrante 3**: Fabián Brenes Loría
 
 ## 📋 Descripción del Proyecto
 Creación de un sistema que prediga qué clientes tienen mayor probabilidad de
@@ -59,7 +66,7 @@ Ejecutar en orden:
 1. `01_EDA_CreditRisk.ipynb` - Análisis exploratorio
 2. `02_Preprocesamiento.ipynb` - Limpieza y preparación
 3. `03_ANN_BinaryClass.ipynb` - Modelo binario
-4. `04_ANN_MultiClass.ipynb` - Modelo multiclase
+4. `04_ANN_Regression.ipynb` - Modelo regresión
 5. `05_Comparacion_Modelos.ipynb` - Evaluación
 
 ### Entrenar Modelos
@@ -111,12 +118,12 @@ ProyectoA_RiesgoCrediticio/
 │   ├── config.py                     # Configuraciones
 │   └── train/                        # Scripts de entrenamiento
 │       ├── binary_classifier.py
-│       ├── multiclass_classifier.py
+│       ├── Regression_classifier.py
 │       └── utils.py
 │
 ├── models/                           # Modelos entrenados
 │   ├── binary_model.h5
-│   ├── multiclass_model.keras
+│   ├── regression_model.keras
 │   ├── scaler.pkl
 │   └── label_encoder.pkl
 │
@@ -144,7 +151,7 @@ ProyectoA_RiesgoCrediticio/
   - Recall: [completar]
   - F1-Score: [completar]
 
-### Modelo 2: Clasificación Multiclase
+### Modelo 2: Clasificación Regresión
 - **Objetivo**: Clasificar nivel de riesgo (Bajo/Medio/Alto/Crítico)
 - **Arquitectura**: [Describir arquitectura implementada]
 - **Métricas**: 
