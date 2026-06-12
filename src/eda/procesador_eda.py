@@ -3,6 +3,7 @@ import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
 import os  # Librería para manejar rutas de archivos.
+from sklearn.preprocessing import OneHotEncoder
 
 
 class ProcesadorEDA:  # Creamos la clase ProcesadorEDA la cual nos ayudará a realizar un análisis EDA.
@@ -70,59 +71,97 @@ class ProcesadorEDA:  # Creamos la clase ProcesadorEDA la cual nos ayudará a re
 
     # -------------------------------------------------------------------------------------------------------------------#
 
-    # 3. Método en el cual obtendremos aquellos datos nulos.
-    def datos_nulos(self):
-        print("Este dataset tiene datos nulos en:")
-        print(self.__DF_data.isnull().sum())
+    # 3. Método para verificar, reportar y limpiar datos nulos
+    def gestionar_datos_nulos(self):
+        print("--- Verificación de Integridad de Datos (Nulos) ---")
 
-    # 4.Eliminar los datos nulos.
-    def eliminar_datos_nulos(self):
-        self.__DF_data.dropna(inplace=True)
-        print('Los datos nulos han sido eliminados')
+        # 1. Evaluamos a nivel global si el dataset tiene CUALQUIER dato nulo
+        if self.__DF_data.isnull().values.any():
+            print("⚠️ Alerta: Se detectaron datos faltantes en el dataset.\n")
 
-        # 5. Imputar los datos nulos (utilizar la media para los numéricos y la moda para las categóricas).
-    def imputar_datos_nulos(self):
-        # 1. Calculamos los nulos por variable
-        df_var = self.__DF_data.isnull().sum()
-        porcentaje_eliminacion = 0.1  # 10%
+            # 2. Reportamos el conteo detallado por columna
+            print("Conteo de nulos por variable:")
+            print(self.__DF_data.isnull().sum())
 
-        # 2. Filtramos variables con menos del 10% de nulos
-        df_var = df_var[df_var < porcentaje_eliminacion * len(self.__DF_data)]
-        lista_variables_OK = df_var.index
-
-        print(f"Variables seleccionadas para imputación (menos del 10% nulos): {list(lista_variables_OK)}")
-
-        # 3. Hacemos la imputación real sobre esas variables en el DataFrame original
-        for columna in lista_variables_OK:
-            # Si la columna tiene nulos, procedemos a llenarlos
-            if self.__DF_data[columna].isnull().any():
-                if self.__DF_data[columna].dtype in ['float64', 'int64']:
-                    # Imputamos con la media para numéricos
-                    media = self.__DF_data[columna].mean()
-                    self.__DF_data[columna].fillna(media, inplace=True)
-                    print(f" -> Variable numérica '{columna}' imputada con la media: {media:.2f}")
-                else:
-                    # Imputamos con la moda para categóricos (texto)
-                    moda = self.__DF_data[columna].mode()
-                    if not moda.empty:
-                        self.__DF_data[columna].fillna(moda[0], inplace=True)
-                        print(f" -> Variable categórica '{columna}' imputada con la moda: '{moda[0]}'")
-
-
-            print("\nPrimeros 5 registros del DataFrame después de filtrar e imputar:")
-            print(self.__DF_data[lista_variables_OK].head(5))
+            # 3. Ejecutamos la desinfección eliminando las filas con nulos
+            print("\nProcediendo con la desinfección...")
+            self.__DF_data.dropna(inplace=True)
+            print("Los datos nulos han sido eliminados correctamente.")
+        else:
+            # Si no hay nulos, saltamos la limpieza e informamos al usuario
+            print("¡Todo está bien! El dataset no contiene registros nulos. No se requiere limpieza.")
 
     # -------------------------------------------------------------------------------------------------------------------#
 
-    # 6. Método en el cual podremos obtener los valores duplicados.
-    def datos_duplicados(self):
-        print('Este dataset tiene los siguientes datos duplicados: ')
-        print(self.__DF_data.duplicated().sum())
+    #4 Gestionar datos duplicados
+    def gestionar_datos_duplicados(self, eliminar=False):
+        duplicados = self.__DF_data.duplicated().sum()
+        print('Este dataset tiene los siguientes datos duplicados:')
+        print(duplicados)
 
-    # 7.Eliminar los datos duplicados.
-    def eliminar_datos_duplicados(self):
-        self.__DF_data.drop_duplicates(inplace=True)
-        print('Los datos duplicados del dataset han sido eliminados correctamente')
+        if eliminar:
+            self.__DF_data.drop_duplicates(inplace=True)
+            print('Los datos duplicados han sido eliminados correctamente')
+        else:
+            print('No se eliminaron los duplicados')
+
+    # -------------------------------------------------------------------------------------------------------------------#
+    #5 Generar OneHotEncoder ya que existen varias variables que se deben de pasar de STR a int
+
+    # 7. Método para aplicar One-Hot Encoding a variables categóricas
+    def aplicar_one_hot_encoding(self, columnas_especificas=None):
+
+        # Aplica One-Hot Encoding a las columnas categóricas indicadas o
+        # detecta automáticamente todas las variables de texto si no se pasa ninguna.
+
+        print("--- Aplicando One-Hot Encoding ---")
+
+        # 1. Detectar columnas categóricas si no se especifican
+        if columnas_especificas is None:
+            columnas_especificas = self.__DF_data.select_dtypes(
+                include=['object', 'category']
+            ).columns.tolist()
+
+        # 2. Evitar usar customerID
+        if 'customerID' in columnas_especificas:
+            columnas_especificas.remove('customerID')
+
+        # 3. Validar que haya columnas
+        if not columnas_especificas:
+            print("No se encontraron variables categóricas para codificar.")
+            return
+
+        print(f"Variables seleccionadas para codificación: {columnas_especificas}")
+
+        # 4. Inicializamos el codificador
+        encoder = OneHotEncoder(sparse_output=False, handle_unknown='ignore')
+
+        # 5. Transformar datos
+        encoded_results = encoder.fit_transform(
+            self.__DF_data[columnas_especificas]
+        )
+
+        # 6. Obtener nombres de nuevas columnas
+        nuevos_nombres = encoder.get_feature_names_out(columnas_especificas)
+
+        # 7. Crear DataFrame con resultados codificados
+        df_encoded = pd.DataFrame(
+            encoded_results,
+            columns=nuevos_nombres,
+            index=self.__DF_data.index
+        )
+
+        # 8. Unir y eliminar columnas originales
+        self.__DF_data = self.__DF_data.join(df_encoded)
+        self.__DF_data.drop(columns=columnas_especificas, inplace=True)
+
+        # 9. Actualizar dimensiones
+        self.__num_filas = self.__DF_data.shape[0]
+        self.__num_columnas = self.__DF_data.shape[1]
+
+        print("✅ One-Hot Encoding completado con éxito.")
+        print(f"Nuevo tamaño del dataset: {self.__num_filas} filas x {self.__num_columnas} columnas.\n")
+
 
     # -------------------------------------------------------------------------------------------------------------------#
 
@@ -193,37 +232,43 @@ class ProcesadorEDA:  # Creamos la clase ProcesadorEDA la cual nos ayudará a re
 
     # 12. Método para realizar la limpieza general del dataset
     def ejecutar_eda(self):
+        print("=" * 120)
+        print("=" * 120)
+        print("\n")
         print("Ejecución procesamiento EDA \n")
-        print("#1 Informacion del dataset raw, datos estadistico")
+        print("\n")
+        print("=" * 60)
+        print("\n")
+        print("#1 Informacion del dataset ""WA_Fn-UseC_-Telco-Customer-Churn.csv"", datos estadistico")
+        print("\n")
         self.informacion_data()
         print("\n")
+        print("=" * 60)
         print("#2 Limpieza texto de las variables STR")
         self.limpiar_texto()
         print("\n")
+        print("=" * 60)
         print("#3 Verificacion datos nulos")
-        self.datos_nulos()
+        self.gestionar_datos_nulos()
         print("\n")
-        print("#4 Eliminar datos nulos ")
-        self.eliminar_datos_nulos()
+        print("=" * 60)
+        print("#4 Validacion datos duplicados")
+        self.gestionar_datos_duplicados()
         print("\n")
-        print("#5 Imputar datos nulos")
-        self.imputar_datos_nulos()
+        print("=" * 60)
+        print("#5 Aplicar onehotencoding al dataset")
+        self.aplicar_one_hot_encoding()
+        print("=" * 60)
         print("\n")
-        print("#6 Datos duplicados")
-        self.datos_duplicados()
-        print("\n")
-        print("#7 Eliminar datos duplicados")
-        self.datos_duplicados()
-        print("\n")
-        print("#8 Generar dataset limpio")
-        self.csv_limpio()
-        print("\n")
-        print("---------------------------------------------------------------------------------------------------\n")
         print("Matriz correlación, histograma y boxplot")
         print("\n")
+        print("=" * 60)
         self.eda_matriz_correlacion()
         self.eda_histogramas()
         self.generar_boxplots()
+        print("#8 Generar dataset limpio")
+        self.csv_limpio()
+        print("\n")
 
 
 # =============================================================================
@@ -240,7 +285,7 @@ if __name__ == "__main__":
         os.path.join(
             directorio_actual,
             "..", "..",
-            "data", "raw", "data", "raw",
+            "data", "raw",
             "WA_Fn-UseC_-Telco-Customer-Churn.csv"
         )
     )
@@ -257,4 +302,4 @@ if __name__ == "__main__":
         analisis_churn.ejecutar_eda()
     else:
         print("❌ ERROR: El archivo no se encuentra en la ruta calculada.")
-        print("Por favor, verifica el bloque de código de la ruta.")
+        print(f"Por favor, verifica que el archivo exista en: {ruta_real_archivo}")
