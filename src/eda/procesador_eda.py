@@ -161,6 +161,7 @@ class ProcesadorEDA:  # Creamos la clase ProcesadorEDA la cual nos ayudará a re
         print("✅ One-Hot Encoding completado con éxito.")
         print(f"Nuevo tamaño del dataset: {self.__num_filas} filas x {self.__num_columnas} columnas.\n")
 
+
     # -------------------------------------------------------------------------------------------------------------------#
     #6 Calculo de correlaciones
 
@@ -212,6 +213,7 @@ class ProcesadorEDA:  # Creamos la clase ProcesadorEDA la cual nos ayudará a re
 
 
     # -------------------------------------------------------------------------------------------------------------------#
+    #8 Generar dataset reducido con la variables fuertemente correlacionadas
 
     def generar_dataset_reducido(self, target='Churn_Yes', umbral=0.3):
         print("--- Generando dataset reducido basado en correlación ---")
@@ -241,48 +243,84 @@ class ProcesadorEDA:  # Creamos la clase ProcesadorEDA la cual nos ayudará a re
         print("\n✅ Dataset reducido creado correctamente")
         print(f"Nuevo tamaño: {self.__DF_reducido.shape[0]} filas x {self.__DF_reducido.shape[1]} columnas")
 
-        # ✅ Guardar archivo CSV
-        nombre_archivo = "telco_churn_clean.csv"
-        self.__DF_reducido.to_csv(nombre_archivo, index=False)
+        ruta = Path('src/eda/processed/telco_churn_reducido.csv')
 
-        print(f"💾 Archivo guardado como: {nombre_archivo}\n")
+        # Crear carpeta si no existe
+        ruta.parent.mkdir(parents=True, exist_ok=True)
 
-        return self.__DF_reducido
+        # Guardar el DataFrame
+        self.__DF_reducido.to_csv(ruta, index=False)
 
-    # -------------------------------------------------------------------------------------------------------------------#
-
-    # 8. Método para poder guardar nuestro csv limpio y guardarlo en la carpeta processed.
-    def csv_limpio(self, ruta_guardar_csv='src/eda/processed/telco_churn_clean.csv'):
-            ruta = Path(ruta_guardar_csv)
-
-            # Crea 'data/raw/processed' si no existe
-            ruta.parent.mkdir(parents=True, exist_ok=True)
-
-            # Guarda el DataFrame que YA fue modificado por el método anterior
-            self.__DF_data.to_csv(ruta, index=False)
-            print(f'El Dataset limpio se ha guardado en la ruta: {ruta.resolve()}')
+        print(f'✅ El dataset reducido se ha guardado en: {ruta.resolve()}')
 
     # -------------------------------------------------------------------------------------------------------------------#
 
     # 9 Matriz de correlación
     def eda_matriz_correlacion(self):
-        # Seleccionar únicamente columnas numéricas
-        df_numerico = self.__DF_data.select_dtypes(include=['number'])
-
-        if df_numerico.empty:
-            print("No hay columnas numéricas para generar la matriz de correlación.")
+        # Validar que el dataset reducido existe
+        if not hasattr(self, '_Clase__DF_reducido') or self.__DF_reducido is None:
+            print("❌ El dataset reducido no ha sido generado aún.")
             return None
 
+        # Seleccionar columnas numéricas del dataset reducido
+        df_numerico = self.__DF_reducido.select_dtypes(include=['number'])
+
+        if df_numerico.empty:
+            print("⚠️ No hay columnas numéricas en el dataset reducido.")
+            return None
+
+        # Calcular matriz de correlación
         matriz_correlacion = df_numerico.corr()
 
+        # Graficar heatmap
         plt.figure(figsize=(10, 8))
         sns.heatmap(matriz_correlacion, annot=True, cmap='coolwarm', fmt=".2f")
-        plt.title('Matriz de Correlación')
+        plt.title('Matriz de Correlación (Dataset Reducido)')
         plt.show()
 
         return matriz_correlacion
 
     # -------------------------------------------------------------------------------------------------------------------#
+
+    def eda_matriz_correlacion_grafico(self):
+        # 1. Validar que el dataset exista (usando el nombre correcto del atributo privado)
+        if not hasattr(self, "_Clase__DF_reducido") or self.__DF_reducido is None:
+            print("❌ El dataset reducido no ha sido generado aún.")
+            return None
+
+        # 2. Seleccionar columnas numéricas
+        df_numerico = self.__DF_reducido.select_dtypes(include=["number"])
+
+        if df_numerico.empty:
+            print("⚠️ No hay columnas numéricas en el dataset reducido.")
+            return None
+
+        # 3. Calcular matriz de correlación
+        matriz_correlacion = df_numerico.corr()
+
+        # 4. Configurar y graficar el Heatmap
+        plt.figure(figsize=(10, 8))
+
+        # Creamos una máscara para ocultar la mitad superior (opcional, pero se ve más limpio)
+        # import numpy as np
+        # mascara = np.triu(np.ones_like(matriz_correlacion, dtype=bool))
+
+        sns.heatmap(
+            matriz_correlacion,
+            annot=True,  # Muestra los números en los cuadrados
+            cmap="coolwarm",  # Escala de colores (azul frío a rojo cálido)
+            fmt=".2f",  # Redondea a 2 decimales
+            linewidths=0.5,  # Agrega una línea sutil de separación
+            vmin=-1,
+            vmax=1,  # Fuerza la escala de -1 a 1
+            # mask=mascara # Descomenta si usas la máscara
+        )
+
+        plt.title("Matriz de Correlación (Dataset Reducido)", fontsize=14, pad=20)
+        plt.tight_layout()  # Ajusta los márgenes para que no se corten las etiquetas
+        plt.show()
+
+        return matriz_correlacion
 
     # 10 Histograma para cada columna numérica
     def eda_histogramas(self):
@@ -345,7 +383,7 @@ class ProcesadorEDA:  # Creamos la clase ProcesadorEDA la cual nos ayudará a re
         self.gestionar_datos_duplicados()
         print("\n")
         print("=" * 60)
-        print("#5 Aplicar onehotencoding al dataset")
+        print("#5 Aplicar Onehotencoding al dataset")
         self.aplicar_one_hot_encoding()
         print("\n")
         print("=" * 60)
@@ -362,15 +400,16 @@ class ProcesadorEDA:  # Creamos la clase ProcesadorEDA la cual nos ayudará a re
         self.generar_dataset_reducido()
         print("=" * 60)
         print("\n")
-        self.csv_limpio()
+        print("Generar gradico de correlaciones")
+        self.eda_matriz_correlacion_grafico()
         print("\n")
         print("Matriz correlación, histograma y boxplot")
         print("\n")
         print("=" * 60)
         self.eda_matriz_correlacion()
-        self.eda_histogramas()
-        self.generar_boxplots()
-        print("#8 Generar dataset limpio")
+        #self.eda_histogramas()
+        #self.generar_boxplots()
+
 
 
 
