@@ -213,6 +213,44 @@ class ProcesadorEDA:  # Creamos la clase ProcesadorEDA la cual nos ayudará a re
 
     # -------------------------------------------------------------------------------------------------------------------#
 
+    def generar_dataset_reducido(self, target='Churn_Yes', umbral=0.3):
+        print("--- Generando dataset reducido basado en correlación ---")
+
+        if target not in self.__DF_data.columns:
+            print(f"❌ La columna {target} no existe.")
+            return None
+
+        # Calcular correlaciones
+        corr = self.__DF_data.corr(numeric_only=True)[target]
+
+        # Seleccionar variables con correlación fuerte
+        variables_fuertes = corr[
+            (corr >= umbral) | (corr <= -umbral)
+            ].index.tolist()
+
+        # Asegurar que incluya la variable objetivo
+        if target not in variables_fuertes:
+            variables_fuertes.append(target)
+
+        print(f"✅ Variables seleccionadas ({len(variables_fuertes)}):")
+        print(variables_fuertes)
+
+        # Crear nuevo dataset
+        self.__DF_reducido = self.__DF_data[variables_fuertes].copy()
+
+        print("\n✅ Dataset reducido creado correctamente")
+        print(f"Nuevo tamaño: {self.__DF_reducido.shape[0]} filas x {self.__DF_reducido.shape[1]} columnas")
+
+        # ✅ Guardar archivo CSV
+        nombre_archivo = "prueba.clean.csv"
+        self.__DF_reducido.to_csv(nombre_archivo, index=False)
+
+        print(f"💾 Archivo guardado como: {nombre_archivo}\n")
+
+        return self.__DF_reducido
+
+    # -------------------------------------------------------------------------------------------------------------------#
+
     # 8. Método para poder guardar nuestro csv limpio y guardarlo en la carpeta processed.
     def csv_limpio(self, ruta_guardar_csv='src/eda/processed/telco_churn_clean.csv'):
             ruta = Path(ruta_guardar_csv)
@@ -320,6 +358,9 @@ class ProcesadorEDA:  # Creamos la clase ProcesadorEDA la cual nos ayudará a re
         print("\n")
         print("=" * 60)
         print("#8 Generar dataset limpio")
+        print("\n")
+        self.generar_dataset_reducido()
+        print("=" * 60)
         print("\n")
         self.csv_limpio()
         print("\n")
