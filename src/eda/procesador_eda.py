@@ -1,25 +1,20 @@
-# Importamos las librerías necesarias.
 import pandas as pd
 import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
+import os  # Librería para manejar rutas de archivos.
 
-import os  # Libreria para manejar rutas de archivos.
 
-
-# Iniciamos la clase.
-
-class ProcesadorEDA:  # Creamos la clase ProcesadorEDA la cual nos ayudara a realizar un analisis EDA.
-    def __init__(self, DF_PremierLeague=pd.DataFrame()):  # Realizamos el constructor.
-        self.__DF_PremierLeague = DF_PremierLeague  # Aqui tenemos nustro atributo privado que almacena el DataFrame.
-        self.__num_filas = DF_PremierLeague.shape[
-            0]  # Aqui tenemos nuestros atributos privados que almacenan el numero de filas y columnas.
-        self.__num_columnas = DF_PremierLeague.shape[1]
+class ProcesadorEDA:  # Creamos la clase ProcesadorEDA la cual nos ayudará a realizar un análisis EDA.
+    def __init__(self, DF_data=pd.DataFrame()):  # Realizamos el constructor.
+        self.__DF_data = DF_data  # Atributo privado que almacena el DataFrame.
+        self.__num_filas = DF_data.shape[0]  # Atributos privados que almacenan el número de filas y columnas.
+        self.__num_columnas = DF_data.shape[1]
 
     # Creamos los propertys (getters) para acceder a los atributos privados.
     @property
-    def DF_PremierLeague(self):
-        return self.__DF_PremierLeague
+    def DF_data(self):
+        return self.__DF_data
 
     @property
     def num_filas(self):
@@ -30,9 +25,11 @@ class ProcesadorEDA:  # Creamos la clase ProcesadorEDA la cual nos ayudara a rea
         return self.__num_columnas
 
     # Creamos los setters para que podamos modificar los atributos privados si es necesario.
-    @DF_PremierLeague.setter
-    def DF_PremierLeague(self, DF_PremierLeague):
-        self.__DF_PremierLeague = DF_PremierLeague
+    @DF_data.setter
+    def DF_data(self, DF_data):
+        self.__DF_data = DF_data
+        self.__num_filas = DF_data.shape[0]
+        self.__num_columnas = DF_data.shape[1]
 
     @num_filas.setter
     def num_filas(self, num_filas):
@@ -42,93 +39,107 @@ class ProcesadorEDA:  # Creamos la clase ProcesadorEDA la cual nos ayudara a rea
     def num_columnas(self, num_columnas):
         self.__num_columnas = num_columnas
 
-    # Iniciamos con la agregacion de metodos que necesitaremos para el analisis EDA.
+    # -------------------------------------------------------------------------------------------------------------------#
 
-    # 1. Metodo en el cual obtendremos informacion general del Dataset que se nos a proporcionado.
-    def informacion_premier_league(self):
-        print("Informacion general del dataset")
-        print(f"Primeros 5 registros del data set: \n{self.__DF_PremierLeague.head()}")
-        print(f"Estadistica basica del dataset{self.__DF_PremierLeague.describe()}")
+    # 1. Método en el cual obtendremos información general del Dataset proporcionado.
+    def informacion_data(self):
+        print("Información general del dataset")
+        print(f"Descripcion del dataset \n{self.__DF_data.info()}")
+        print(f"Primeros 5 registros del data set: \n{self.__DF_data.head(5)}")
+        print(f"Estadística básica del dataset:\n{self.__DF_data.describe()}")
 
     # -------------------------------------------------------------------------------------------------------------------#
 
-    # 2. Metodo con el que podremos limpiar textos ya sea el nombre de los jugadores, equipos, etc.
+    # 2. Método con el que podremos limpiar textos ya que tenemos varias variables STR
     def limpiar_texto(self):
-        columnas_texto = self.__DF_PremierLeague.select_dtypes(
-            include=['object', 'category']).columns  # Selecciona las columnas de tipo texto.
+    # Añadimos 'str' y str de forma explícita para evitar el Pandas4Warning
+        columnas_texto = self.__DF_data.select_dtypes(
+            include=['object', 'category', 'str', str]
+        ).columns  # Selecciona las columnas de tipo texto.
 
+        print("Iniciando la limpieza de textos...")
         for columna in columnas_texto:
-            self.__DF_PremierLeague[columna] = (self.__DF_PremierLeague[columna].astype(str).apply(
+                # Mostramos en consola qué variable se está limpiando justo ahora
+            print(f" -> Limpiando texto en la variable: '{columna}'")
+
+            self.__DF_data[columna] = (self.__DF_data[columna].astype(str).apply(
                 lambda x: x.encode('utf-8', 'ignore').decode('utf-8', 'ignore'))
-            )  # Asegura que los datos sean de tipo string.
+            )  # Asegura que los datos sean de tipo string limpios.
+
+        print("¡Todas las columnas categóricas han sido limpiadas con éxito!\n")
 
     # -------------------------------------------------------------------------------------------------------------------#
 
-    # 3. Metodo en el cual obtendremos aquellos datos nulos.
+    # 3. Método en el cual obtendremos aquellos datos nulos.
     def datos_nulos(self):
         print("Este dataset tiene datos nulos en:")
-        print(self.__DF_PremierLeague.isnull().sum())
+        print(self.__DF_data.isnull().sum())
 
-    # Dentro de este segundo metodo tendremos 2 metodos que ayuden a eliminar o imputar los datos nulos.
-    # Eliminar los datos nulos.
+    # 4.Eliminar los datos nulos.
     def eliminar_datos_nulos(self):
-        self.__DF_PremierLeague.dropna(inplace=True)
+        self.__DF_data.dropna(inplace=True)
         print('Los datos nulos han sido eliminados')
 
-    # Imputar los datos nulos (utilizar la media para los numericos y la moda para las categoricas).
+        # 5. Imputar los datos nulos (utilizar la media para los numéricos y la moda para las categóricas).
     def imputar_datos_nulos(self):
-        for columnas in self.__DF_PremierLeague.columns:
-            if self.__DF_PremierLeague[columnas].dtype in [np.float64, np.int64]:
-                self.__DF_PremierLeague[columnas].fillna(self.__DF_PremierLeague[columnas].mean(), inplace=True)
-            else:
-                self.__DF_PremierLeague[columnas].fillna(self.__DF_PremierLeague[columnas].mode()[0], inplace=True)
-        print("Los datos nulos han sido imputados")
+        # 1. Calculamos los nulos por variable
+        df_var = self.__DF_data.isnull().sum()
+        porcentaje_eliminacion = 0.1  # 10%
+
+        # 2. Filtramos variables con menos del 10% de nulos
+        df_var = df_var[df_var < porcentaje_eliminacion * len(self.__DF_data)]
+        lista_variables_OK = df_var.index
+
+        print(f"Variables seleccionadas para imputación (menos del 10% nulos): {list(lista_variables_OK)}")
+
+        # 3. Hacemos la imputación real sobre esas variables en el DataFrame original
+        for columna in lista_variables_OK:
+            # Si la columna tiene nulos, procedemos a llenarlos
+            if self.__DF_data[columna].isnull().any():
+                if self.__DF_data[columna].dtype in ['float64', 'int64']:
+                    # Imputamos con la media para numéricos
+                    media = self.__DF_data[columna].mean()
+                    self.__DF_data[columna].fillna(media, inplace=True)
+                    print(f" -> Variable numérica '{columna}' imputada con la media: {media:.2f}")
+                else:
+                    # Imputamos con la moda para categóricos (texto)
+                    moda = self.__DF_data[columna].mode()
+                    if not moda.empty:
+                        self.__DF_data[columna].fillna(moda[0], inplace=True)
+                        print(f" -> Variable categórica '{columna}' imputada con la moda: '{moda[0]}'")
+
+
+            print("\nPrimeros 5 registros del DataFrame después de filtrar e imputar:")
+            print(self.__DF_data[lista_variables_OK].head(5))
 
     # -------------------------------------------------------------------------------------------------------------------#
-    # 4. Metodo en cual podremos obtener los valores duplicados.
-    def datos_duplicados(self):
-        print('Este dataset tiene los siguientes datos duplicados: \n')
-        print(self.__DF_PremierLeague.duplicated().sum())
 
-    # Ese metodo nos da el numero de filas duplicadas, en este nuevo metodo vamos a eliminar esos datos duplicados.
+    # 6. Método en el cual podremos obtener los valores duplicados.
+    def datos_duplicados(self):
+        print('Este dataset tiene los siguientes datos duplicados: ')
+        print(self.__DF_data.duplicated().sum())
+
+    # 7.Eliminar los datos duplicados.
     def eliminar_datos_duplicados(self):
-        self.__DF_PremierLeague.drop_duplicates(inplace=True)
+        self.__DF_data.drop_duplicates(inplace=True)
         print('Los datos duplicados del dataset han sido eliminados correctamente')
 
     # -------------------------------------------------------------------------------------------------------------------#
-    # 5. metodo para limpiar la edad de los juagadores ya que solo queremos el primer numero (29-343).
-    def correccion_edad(self):
-        self.__DF_PremierLeague['Age'] = self.__DF_PremierLeague['Age'].astype(str).str.split('-').str[0].astype(int)
-        print('La columna de Age ha sido corregida correctamente')
 
-    # -------------------------------------------------------------------------------------------------------------------#
-    # 6. Metodo con el que vamos a corregir la columna '#' por 'Number' que es numero de la camiseta del jugador.
-    def numero_camiseta(self):
-        self.__DF_PremierLeague.rename(columns={'#': 'Number'}, inplace=True)
-        print("La columna '#' ha sido renombrada a 'Number' correctamente")
-
-    # -------------------------------------------------------------------------------------------------------------------#
-    # 7. Metodo de normalizacion de categorias equipo-posicion.
-    def normalizacion_categorias(self):
-        self.__DF_PremierLeague['Team'] = (self.__DF_PremierLeague['Team'].astype(
-            str).str.title().str.strip())  # Normaliza los nombres de los equipos.
-        self.__DF_PremierLeague['Position'] = (self.__DF_PremierLeague['Position'].astype(
-            str).str.upper().str.strip())  # Normaliza las posiciones de los jugadores.
-        print('Las categorias de equipo y posicion han sido normalizadas')
-
-    # 8. Metodo para poder guardar nuestro csv limpio y guardarlo en la carpeta processed.
-    def csv_limpio(self, ruta_guardar_csv='data/processed/premier_clean.csv'):
+    # 8. Método para poder guardar nuestro csv limpio y guardarlo en la carpeta processed.
+    def csv_limpio(self, ruta_guardar_csv='data/raw/data,processed/telco_churn_clean.csv'):
         carpeta = os.path.dirname(ruta_guardar_csv)  # Obtenemos la carpeta del path proporcionado.
-        os.makedirs(carpeta, exist_ok=True)  # Creamos la carpeta si no existe.
-        self.__DF_PremierLeague.to_csv(ruta_guardar_csv, index=False)  # Guardamos el DataFrame como un archivo CSV.
-        print('El Dataset limpio se a guardado en la ruta:', {ruta_guardar_csv})
+        if carpeta:
+            os.makedirs(carpeta, exist_ok=True)  # Creamos la carpeta si no existe.
+        self.__DF_data.to_csv(ruta_guardar_csv, index=False)  # Guardamos el DataFrame como un archivo CSV.
+        print(f'El Dataset limpio se ha guardado en la ruta: {ruta_guardar_csv}')
 
     # -------------------------------------------------------------------------------------------------------------------#
-    # 9 Matriz de correlacion
-    def eda_matriz_correlacion(self):
 
+    # 9 Matriz de correlación
+    def eda_matriz_correlacion(self):
         # Seleccionar únicamente columnas numéricas
-        df_numerico = self.__DF_PremierLeague.select_dtypes(include=['number'])
+        df_numerico = self.__DF_data.select_dtypes(include=['number'])
 
         if df_numerico.empty:
             print("No hay columnas numéricas para generar la matriz de correlación.")
@@ -143,20 +154,18 @@ class ProcesadorEDA:  # Creamos la clase ProcesadorEDA la cual nos ayudara a rea
 
         return matriz_correlacion
 
-        # -------------------------------------------------------------------------------------------------------------------#
+    # -------------------------------------------------------------------------------------------------------------------#
 
-    # 10 Histograma para cada columna numerica
+    # 10 Histograma para cada columna numérica
     def eda_histogramas(self):
-
         # Genera un histograma para la variable "Number"
-        # Verifica que la columna exista y sea numérica para generar el grafico
         columna = "Number"
-        if columna in self.__DF_PremierLeague.select_dtypes(include=['number']).columns:
+        if columna in self.__DF_data.select_dtypes(include=['number']).columns:
             plt.figure(figsize=(8, 5))
-            sns.histplot(self.__DF_PremierLeague[columna], kde=True, bins=10, palette='magma')
-            plt.title("Histograma variable Numero de camisa")
-            plt.xlabel("Numero de camisa")
-            plt.ylabel('Cantidad de jugadores por numero de camisa')
+            sns.histplot(self.__DF_data[columna], kde=True, bins=10)
+            plt.title("Histograma variable Número de camisa")
+            plt.xlabel("Número de camisa")
+            plt.ylabel('Cantidad de jugadores por número de camisa')
             plt.grid(True)
             plt.tight_layout()
             plt.show()
@@ -164,17 +173,14 @@ class ProcesadorEDA:  # Creamos la clase ProcesadorEDA la cual nos ayudara a rea
             print(f"La columna '{columna}' no existe o no es numérica.")
 
     # -------------------------------------------------------------------------------------------------------------------#
+
     # 11 Boxplot
-
     def generar_boxplots(self):
-
         # Genera un boxplot para la columna numérica age.
-
         columna = "Age"
-
-        if columna in self.__DF_PremierLeague.select_dtypes(include=['number']).columns:
+        if columna in self.__DF_data.select_dtypes(include=['number']).columns:
             plt.figure(figsize=(8, 5))
-            sns.boxplot(x=self.__DF_PremierLeague[columna], palette='magma')
+            sns.boxplot(x=self.__DF_data[columna])
             plt.title("Box plot de edad de jugadores")
             plt.xlabel("Edad de jugadores")
             plt.grid(True)
@@ -184,36 +190,71 @@ class ProcesadorEDA:  # Creamos la clase ProcesadorEDA la cual nos ayudara a rea
             print(f"La columna '{columna}' no existe o no es numérica.")
 
     # -------------------------------------------------------------------------------------------------------------------#
-    # 9. Metodo para realizar la limpieza general del dataset
+
+    # 12. Método para realizar la limpieza general del dataset
     def ejecutar_eda(self):
-        print("Ejecucion procesamiento EDA \n")
+        print("Ejecución procesamiento EDA \n")
+        print("#1 Informacion del dataset raw, datos estadistico")
+        self.informacion_data()
         print("\n")
-        self.informacion_premier_league()
-        print("\n")
+        print("#2 Limpieza texto de las variables STR")
         self.limpiar_texto()
         print("\n")
+        print("#3 Verificacion datos nulos")
         self.datos_nulos()
         print("\n")
+        print("#4 Eliminar datos nulos ")
+        self.eliminar_datos_nulos()
+        print("\n")
+        print("#5 Imputar datos nulos")
         self.imputar_datos_nulos()
         print("\n")
+        print("#6 Datos duplicados")
         self.datos_duplicados()
         print("\n")
-        self.eliminar_datos_duplicados()
+        print("#7 Eliminar datos duplicados")
+        self.datos_duplicados()
         print("\n")
-        self.correccion_edad()
-        print("\n")
-        self.numero_camiseta()
-        print("\n")
-        self.normalizacion_categorias()
-        print("\n")
+        print("#8 Generar dataset limpio")
         self.csv_limpio()
         print("\n")
-        print(f"El dataset modificado seria el siguiente {self.__DF_PremierLeague}")
         print("---------------------------------------------------------------------------------------------------\n")
-        print("Matriz correlacion, histograma y boxplot")
+        print("Matriz correlación, histograma y boxplot")
         print("\n")
         self.eda_matriz_correlacion()
         self.eda_histogramas()
         self.generar_boxplots()
 
-# -------------------------------------------------------------------------------------------------------------------#
+
+# =============================================================================
+# INSTANCIACIÓN CON TU ARCHIVO REAL
+# =============================================================================
+
+if __name__ == "__main__":
+
+    # 1. Obtenemos la ruta absoluta de la carpeta donde está este script (src/eda)
+    directorio_actual = os.path.dirname(os.path.abspath(__file__))
+
+
+    ruta_real_archivo = os.path.normpath(
+        os.path.join(
+            directorio_actual,
+            "..", "..",
+            "data", "raw", "data", "raw",
+            "WA_Fn-UseC_-Telco-Customer-Churn.csv"
+        )
+    )
+
+    print(f"Buscando archivo en la ruta calculada:\n--> {ruta_real_archivo}\n")
+
+    # 3. Validamos si el archivo existe e iniciamos el EDA
+    if os.path.exists(ruta_real_archivo):
+        print("¡Archivo encontrado con éxito! Cargando datos...")
+        df_clientes = pd.read_csv(ruta_real_archivo)
+
+        # Instanciamos la clase y corremos el proceso
+        analisis_churn = ProcesadorEDA(DF_data=df_clientes)
+        analisis_churn.ejecutar_eda()
+    else:
+        print("❌ ERROR: El archivo no se encuentra en la ruta calculada.")
+        print("Por favor, verifica el bloque de código de la ruta.")
