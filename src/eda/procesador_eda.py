@@ -242,7 +242,7 @@ class ProcesadorEDA:  # Creamos la clase ProcesadorEDA la cual nos ayudará a re
         print(f"Nuevo tamaño: {self.__DF_reducido.shape[0]} filas x {self.__DF_reducido.shape[1]} columnas")
 
         # ✅ Guardar archivo CSV
-        nombre_archivo = "prueba.clean.csv"
+        nombre_archivo = "telco_churn_clean.csv"
         self.__DF_reducido.to_csv(nombre_archivo, index=False)
 
         print(f"💾 Archivo guardado como: {nombre_archivo}\n")
