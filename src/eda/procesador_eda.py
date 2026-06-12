@@ -1,5 +1,8 @@
+from pathlib import Path
 import pandas as pd
 import numpy as np
+
+
 import seaborn as sns
 import matplotlib.pyplot as plt
 import os  # Librería para manejar rutas de archivos.
@@ -108,70 +111,118 @@ class ProcesadorEDA:  # Creamos la clase ProcesadorEDA la cual nos ayudará a re
     # -------------------------------------------------------------------------------------------------------------------#
     #5 Generar OneHotEncoder ya que existen varias variables que se deben de pasar de STR a int
 
-    # 7. Método para aplicar One-Hot Encoding a variables categóricas
     def aplicar_one_hot_encoding(self, columnas_especificas=None):
-
-        # Aplica One-Hot Encoding a las columnas categóricas indicadas o
-        # detecta automáticamente todas las variables de texto si no se pasa ninguna.
-
         print("--- Aplicando One-Hot Encoding ---")
 
-        # 1. Detectar columnas categóricas si no se especifican
         if columnas_especificas is None:
             columnas_especificas = self.__DF_data.select_dtypes(
-                include=['object', 'category']
+                include=['object', 'category', 'string']
             ).columns.tolist()
 
-        # 2. Evitar usar customerID
-        if 'customerID' in columnas_especificas:
-            columnas_especificas.remove('customerID')
+        # Convertir TotalCharges a numérico
+        if 'TotalCharges' in self.__DF_data.columns:
+            self.__DF_data['TotalCharges'] = pd.to_numeric(
+                self.__DF_data['TotalCharges'], errors='coerce'
+            )
 
-        # 3. Validar que haya columnas
+        # Excluir columnas problemáticas
+        for col in ['customerID', 'TotalCharges']:
+            if col in columnas_especificas:
+                columnas_especificas.remove(col)
+
+        # Filtrar alta cardinalidad
+        columnas_especificas = [
+            col for col in columnas_especificas
+            if self.__DF_data[col].nunique() < 20
+        ]
+
         if not columnas_especificas:
             print("No se encontraron variables categóricas para codificar.")
             return
 
         print(f"Variables seleccionadas para codificación: {columnas_especificas}")
 
-        # 4. Inicializamos el codificador
         encoder = OneHotEncoder(sparse_output=False, handle_unknown='ignore')
-
-        # 5. Transformar datos
-        encoded_results = encoder.fit_transform(
-            self.__DF_data[columnas_especificas]
-        )
-
-        # 6. Obtener nombres de nuevas columnas
+        encoded_results = encoder.fit_transform(self.__DF_data[columnas_especificas])
         nuevos_nombres = encoder.get_feature_names_out(columnas_especificas)
 
-        # 7. Crear DataFrame con resultados codificados
         df_encoded = pd.DataFrame(
             encoded_results,
             columns=nuevos_nombres,
             index=self.__DF_data.index
         )
 
-        # 8. Unir y eliminar columnas originales
         self.__DF_data = self.__DF_data.join(df_encoded)
         self.__DF_data.drop(columns=columnas_especificas, inplace=True)
 
-        # 9. Actualizar dimensiones
         self.__num_filas = self.__DF_data.shape[0]
         self.__num_columnas = self.__DF_data.shape[1]
 
         print("✅ One-Hot Encoding completado con éxito.")
         print(f"Nuevo tamaño del dataset: {self.__num_filas} filas x {self.__num_columnas} columnas.\n")
 
+    # -------------------------------------------------------------------------------------------------------------------#
+    #6 Calculo de correlaciones
+
+    def calcular_correlacion_con_churn(self, target='Churn_Yes'):
+        print("--- Calculando correlaciones con Churn ---")
+
+        if target not in self.__DF_data.columns:
+            print(f"❌ La columna {target} no existe en el dataset.")
+            return None
+
+        # Calcular correlaciones
+        correlaciones = self.__DF_data.corr(numeric_only=True)[target]
+
+        # Ordenar por valor absoluto
+        correlaciones_ordenadas = correlaciones.abs().sort_values(ascending=False)
+
+        # Guardar resultado
+        self.__correlaciones_churn = correlaciones_ordenadas
+
+        print("✅ Correlaciones calculadas correctamente.\n")
+
+        return correlaciones_ordenadas
+
+    # -------------------------------------------------------------------------------------------------------------------#
+    #7 Visualizar correlaciones
+    def grafico_correlaciones_churn(self, target='Churn_Yes', top_n=10):
+        import matplotlib.pyplot as plt
+
+        print("--- Graficando correlaciones con Churn ---")
+
+        if target not in self.__DF_data.columns:
+            print(f"❌ La columna {target} no existe.")
+            return
+
+        corr = self.__DF_data.corr(numeric_only=True)[target]
+
+        corr_ordenado = corr.abs().sort_values(ascending=False).drop(target)
+        top = corr_ordenado.head(top_n)
+
+        # Mantener signo real
+        top_signed = corr[top.index]
+
+        plt.figure(figsize=(8, 6))
+        top_signed.sort_values().plot(kind='barh')
+
+        plt.title(f'Top {top_n} correlaciones con Churn')
+        plt.xlabel('Correlación')
+        plt.show()
+
 
     # -------------------------------------------------------------------------------------------------------------------#
 
     # 8. Método para poder guardar nuestro csv limpio y guardarlo en la carpeta processed.
-    def csv_limpio(self, ruta_guardar_csv='data/raw/data,processed/telco_churn_clean.csv'):
-        carpeta = os.path.dirname(ruta_guardar_csv)  # Obtenemos la carpeta del path proporcionado.
-        if carpeta:
-            os.makedirs(carpeta, exist_ok=True)  # Creamos la carpeta si no existe.
-        self.__DF_data.to_csv(ruta_guardar_csv, index=False)  # Guardamos el DataFrame como un archivo CSV.
-        print(f'El Dataset limpio se ha guardado en la ruta: {ruta_guardar_csv}')
+    def csv_limpio(self, ruta_guardar_csv='src/eda/processed/telco_churn_clean.csv'):
+            ruta = Path(ruta_guardar_csv)
+
+            # Crea 'data/raw/processed' si no existe
+            ruta.parent.mkdir(parents=True, exist_ok=True)
+
+            # Guarda el DataFrame que YA fue modificado por el método anterior
+            self.__DF_data.to_csv(ruta, index=False)
+            print(f'El Dataset limpio se ha guardado en la ruta: {ruta.resolve()}')
 
     # -------------------------------------------------------------------------------------------------------------------#
 
@@ -258,7 +309,19 @@ class ProcesadorEDA:  # Creamos la clase ProcesadorEDA la cual nos ayudará a re
         print("=" * 60)
         print("#5 Aplicar onehotencoding al dataset")
         self.aplicar_one_hot_encoding()
+        print("\n")
         print("=" * 60)
+        print("#6 Calcular correlaciones")
+        self.calcular_correlacion_con_churn()
+        print("\n")
+        print("=" * 60)
+        print("Grafico de correlaciones")
+        self.grafico_correlaciones_churn()
+        print("\n")
+        print("=" * 60)
+        print("#8 Generar dataset limpio")
+        print("\n")
+        self.csv_limpio()
         print("\n")
         print("Matriz correlación, histograma y boxplot")
         print("\n")
@@ -267,8 +330,8 @@ class ProcesadorEDA:  # Creamos la clase ProcesadorEDA la cual nos ayudará a re
         self.eda_histogramas()
         self.generar_boxplots()
         print("#8 Generar dataset limpio")
-        self.csv_limpio()
-        print("\n")
+
+
 
 
 # =============================================================================
