@@ -44,17 +44,17 @@ class ProcesadorEDA:  # Creamos la clase ProcesadorEDA la cual nos ayudará a re
         self.__num_columnas = num_columnas
 
     # -------------------------------------------------------------------------------------------------------------------#
-
     # 1. Método en el cual obtendremos información general del Dataset proporcionado.
     def informacion_data(self):
         print("Información general del dataset")
-        print(f"Descripcion del dataset \n{self.__DF_data.info()}")
-        print(f"Primeros 5 registros del data set: \n{self.__DF_data.head(5)}")
-        print(f"Estadística básica del dataset:\n{self.__DF_data.describe()}")
+        print(f"Descripcion del dataset \n{self.__DF_data.info()}") #Resumen de las variables del dataset
+        print(f"Primeros 5 registros del data set: \n{self.__DF_data.head(5)}") #Obtencion de las primeras 5 lineas del dataset
+        print(f"Estadística básica del dataset:\n{self.__DF_data.describe()}") #Estadistica basica del dataset
 
     # -------------------------------------------------------------------------------------------------------------------#
 
     # 2. Método con el que podremos limpiar textos ya que tenemos varias variables STR
+    #Dicho metodo nos permite evaluar las variables que contengan texto y les realiza una limpieza de formato
     def limpiar_texto(self):
     # Añadimos 'str' y str de forma explícita para evitar el Pandas4Warning
         columnas_texto = self.__DF_data.select_dtypes(
@@ -75,14 +75,15 @@ class ProcesadorEDA:  # Creamos la clase ProcesadorEDA la cual nos ayudará a re
     # -------------------------------------------------------------------------------------------------------------------#
 
     # 3. Método para verificar, reportar y limpiar datos nulos
+    # Este metodo revisa las variables y verifica si alguna fila esta vacia, el metodo nos genera alerta si se encuentra algun registro faltante
     def gestionar_datos_nulos(self):
         print("--- Verificación de Integridad de Datos (Nulos) ---")
 
-        # 1. Evaluamos a nivel global si el dataset tiene CUALQUIER dato nulo
+        #Evaluamos a nivel global si el dataset tiene CUALQUIER dato nulo
         if self.__DF_data.isnull().values.any():
-            print("⚠️ Alerta: Se detectaron datos faltantes en el dataset.\n")
+            print("Alerta: Se detectaron datos faltantes en el dataset.\n")
 
-            # 2. Reportamos el conteo detallado por columna
+        #Reportamos el conteo detallado por columna
             print("Conteo de nulos por variable:")
             print(self.__DF_data.isnull().sum())
 
@@ -91,12 +92,16 @@ class ProcesadorEDA:  # Creamos la clase ProcesadorEDA la cual nos ayudará a re
             self.__DF_data.dropna(inplace=True)
             print("Los datos nulos han sido eliminados correctamente.")
         else:
-            # Si no hay nulos, saltamos la limpieza e informamos al usuario
+        # Si no hay nulos, saltamos la limpieza e informamos al usuario
             print("¡Todo está bien! El dataset no contiene registros nulos. No se requiere limpieza.")
 
     # -------------------------------------------------------------------------------------------------------------------#
 
     #4 Gestionar datos duplicados
+    #Este metodo nos permite determinar si existen valores duplicados.
+    #Realiza 2 acciones:
+    #1- Si encuentra valores nulos los elimina
+    #2- Sino encuentra valores nulos indicara que no se requiere eliminar duplicados
     def gestionar_datos_duplicados(self, eliminar=False):
         duplicados = self.__DF_data.duplicated().sum()
         print('Este dataset tiene los siguientes datos duplicados:')
@@ -108,29 +113,49 @@ class ProcesadorEDA:  # Creamos la clase ProcesadorEDA la cual nos ayudará a re
         else:
             print('No se eliminaron los duplicados')
 
+
     # -------------------------------------------------------------------------------------------------------------------#
-    #5 Generar OneHotEncoder ya que existen varias variables que se deben de pasar de STR a int
 
-    def aplicar_one_hot_encoding(self, columnas_especificas=None):
-        print("--- Aplicando One-Hot Encoding ---")
+    #5 Reemplazar Yes/No de la variable objetivo Churn por 1-0
+    #Dicho metodo nos permite identificar la variable objetivo "Churn"y aplicacion un ciclo si encuentra que sea "Si" lo cambio por "1", pero si encuentra que sea "no" lo cambio por "0"
+    # En dicho metodo se utiliza pandas.map() para realizar el mapeo de Si/No
+    def transformar_target_churn(self):
+        print("--- Transformando Variable Objetivo (Churn) ---")
 
+        #Antes de realizar el cambio de valores de la variable verifica si existe en el DF
+        if 'Churn' not in self.__DF_data.columns:
+            print("La columna 'Churn' no se encuentra en el dataset o ya fue transformada.")
+            return
+
+        #Aplicamos el mapeo de 'Yes'/'No' a 1/0
+        # Usamos .map() que es la forma más rápida y estándar en Pandas
+        self.__DF_data['Churn'] = self.__DF_data['Churn'].map({'Yes': 1, 'No': 0})
+
+        print("✅ Transformación de 'Churn' completada con éxito (Yes -> 1, No -> 0).")
+
+    # -------------------------------------------------------------------------------------------------------------------#
+    #6 Generar OneHotEncoder ya que existen varias variables que se deben de pasar de STR a int
+    #La variables que se requieren pasar a OneHotEncoder son: gender', 'Partner', 'Dependents', 'PhoneService', 'MultipleLines', 'InternetService', 'OnlineSecurity', 'OnlineBackup', 'DeviceProtection', 'TechSupport', 'StreamingTV', 'StreamingMovies', 'Contract', 'PaperlessBilling', 'PaymentMethod'
+    #Se implementa OneHotEncoder debido a que las variables mencionadas anteriormente tiene datos como "YES" o "NO"
+    def aplicar_one_hot_encoding(self, columnas_especificas=None, columnas_a_excluir=None):
+        print("--- Aplicando One-Hot Encoding Optimizado ---")
+
+        # Antes de aplicar el OneHotEncoder se debe definir columnas a excluir por defecto que no se les aplicara la codificacion.
+        if columnas_a_excluir is None:
+            columnas_a_excluir = ['customerID','MonthlyCharges', 'TotalCharges', 'Churn','tenure']
+        else:
+            columnas_a_excluir = list(set(columnas_a_excluir + ['customerID', 'TotalCharges']))
+
+        # Seleccionar todas las categóricas
         if columnas_especificas is None:
             columnas_especificas = self.__DF_data.select_dtypes(
                 include=['object', 'category', 'string']
             ).columns.tolist()
 
-        # Convertir TotalCharges a numérico
-        if 'TotalCharges' in self.__DF_data.columns:
-            self.__DF_data['TotalCharges'] = pd.to_numeric(
-                self.__DF_data['TotalCharges'], errors='coerce'
-            )
+        # 4. Excluir la variable objetivo y las columnas problemáticas
+        columnas_especificas = [col for col in columnas_especificas if col not in columnas_a_excluir]
 
-        # Excluir columnas problemáticas
-        for col in ['customerID', 'TotalCharges']:
-            if col in columnas_especificas:
-                columnas_especificas.remove(col)
-
-        # Filtrar alta cardinalidad
+        # 5. Filtrar columnas con alta cardinalidad
         columnas_especificas = [
             col for col in columnas_especificas
             if self.__DF_data[col].nunique() < 20
@@ -142,7 +167,9 @@ class ProcesadorEDA:  # Creamos la clase ProcesadorEDA la cual nos ayudará a re
 
         print(f"Variables seleccionadas para codificación: {columnas_especificas}")
 
-        encoder = OneHotEncoder(sparse_output=False, handle_unknown='ignore')
+        # Proceso de One-Hot Encoding optimizado para no duplicar variables binarias
+        # Usamos drop='if_binary' para mantener 1 sola columna en variables de Sí/No
+        encoder = OneHotEncoder(sparse_output=False, drop='if_binary', handle_unknown='ignore')
         encoded_results = encoder.fit_transform(self.__DF_data[columnas_especificas])
         nuevos_nombres = encoder.get_feature_names_out(columnas_especificas)
 
@@ -152,212 +179,220 @@ class ProcesadorEDA:  # Creamos la clase ProcesadorEDA la cual nos ayudará a re
             index=self.__DF_data.index
         )
 
+        #Unir resultados y eliminar las columnas originales codificadas
         self.__DF_data = self.__DF_data.join(df_encoded)
         self.__DF_data.drop(columns=columnas_especificas, inplace=True)
 
+        # Actualizar dimensiones internas
         self.__num_filas = self.__DF_data.shape[0]
         self.__num_columnas = self.__DF_data.shape[1]
 
-        print("✅ One-Hot Encoding completado con éxito.")
-        print(f"Nuevo tamaño del dataset: {self.__num_filas} filas x {self.__num_columnas} columnas.\n")
+        print("One-Hot Encoding completado con éxito.")
+        print(
+            f"Nuevo tamaño del dataset: {self.__num_filas} filas x {self.__num_columnas} columnas (Estructura compacta).\n")
+        print("\n" + "=" * 100 + "\n")
+        print("One-Hot Encoding")
+        print("\n" + "=" * 100 + "\n")
+
+        # 8. Configuración de Pandas y muestra
+        pd.set_option('display.max_columns', None)
+        pd.set_option('display.width', 1000)
+
+        print("--- Primeros 5 registros del Dataset Actualizado One-Hot Encoding ---")
+        print(self.__DF_data.head(5))
+
+        return self.__DF_data
 
 
     # -------------------------------------------------------------------------------------------------------------------#
-    #6 Calculo de correlaciones
+    #7 Calculo de correlaciones
+    #El metodo obtener_correlaciones_fuertes me permite hacer correlaciones con respecto la variable Churn me ordena de mayor a menor.
 
-    def calcular_correlacion_con_churn(self, target='Churn_Yes'):
-        print("--- Calculando correlaciones con Churn ---")
+    def obtener_correlaciones_fuertes(self, umbral=0.1):
+        print(f"--- Calculando Correlaciones Fuertes con Churn (Ordenadas de Mayor a Menor) ---")
 
-        if target not in self.__DF_data.columns:
-            print(f"❌ La columna {target} no existe en el dataset.")
-            return None
+        #$Asegurar que Churn exista y sea numérica
+        if 'Churn' not in self.__DF_data.columns:
+            print("❌ Error: La columna 'Churn' no existe. Asegúrate de haber mapeado 'Yes'/'No' a 1/0 primero.")
+            return
 
-        # Calcular correlaciones
-        correlaciones = self.__DF_data.corr(numeric_only=True)[target]
+        # En caso de que Churn siga detectada como objeto, forzar numérico temporalmente
+        if self.__DF_data['Churn'].dtype == 'object':
+            self.__DF_data['Churn'] = pd.to_numeric(self.__DF_data['Churn'], errors='coerce')
 
-        # Ordenar por valor absoluto
-        correlaciones_ordenadas = correlaciones.abs().sort_values(ascending=False)
+        # Selecciona únicamente las columnas numéricas (Correlación de Pearson requiere números)
+        df_numerico = self.__DF_data.select_dtypes(include=['number'])
 
-        # Guardar resultado
-        self.__correlaciones_churn = correlaciones_ordenadas
+        # Calcular la matriz de correlación con respecto a Churn
+        # .corr() calcula la relación entre todas; luego extraemos solo la serie de 'Churn'
+        correlaciones = df_numerico.corr()['Churn'].drop('Churn')  # Eliminamos la correlación de Churn consigo misma
 
-        print("✅ Correlaciones calculadas correctamente.\n")
+        # Filtrar por el umbral absoluto (mantiene las que superan el umbral en magnitud)
+        correlaciones_filtradas = correlaciones[correlaciones.abs() >= umbral]
+
+        # Ordenar estrictamente de mayor a menor (Valores reales de Pearson)
+        # Al quitar el .abs() y poner ascending=False, las positivas altas van arriba y las negativas abajo
+        correlaciones_ordenadas = correlaciones_filtradas.sort_values(ascending=False)
+
+        if correlaciones_ordenadas.empty:
+            print(f"No se encontraron variables con correlación mayor o igual al umbral {umbral}.")
+            return
+
+        # Mostrar los resultados formateados en pantalla
+        print(f"\nVariables más correlacionadas con el Churn (Abandono):")
+        print(f"{'Variable':<45} | {'Coeficiente de Correlación':<25}")
+        print("-" * 75)
+        for col, val in correlaciones_ordenadas.items():
+            print(f"{col:<45} | {val:>24.4f}")
+
+        print("-" * 75)
+        print(f"Total de características con fuerte relación: {len(correlaciones_ordenadas)}\n")
 
         return correlaciones_ordenadas
 
     # -------------------------------------------------------------------------------------------------------------------#
-    #7 Visualizar correlaciones
-    def grafico_correlaciones_churn(self, target='Churn_Yes', top_n=10):
-        import matplotlib.pyplot as plt
+    #8 Visualizar correlaciones
+    #El metodo nos muestra las correlaciones fuertes con respecto a la variable "Churn"
+    #Devuelve correlacion fuerte positiva="Roja" y correlacion fuerte negativa="Azul"
+    def grafico_correlaciones_churn(self, target='Churn', top_n=10):
 
-        print("--- Graficando correlaciones con Churn ---")
+        print(f"--- Graficando Top {top_n} correlaciones con {target} ---")
 
+        # 1. Validar que la variable objetivo exista en el DataFrame actual
         if target not in self.__DF_data.columns:
-            print(f"❌ La columna {target} no existe.")
+            print(f"La columna '{target}' no existe en el dataset.")
+            print("Asegúrate de haber ejecutado 'transformar_target_churn()' primero.")
             return
 
+        # Calcular la correlación de Pearson (solo numéricas)
         corr = self.__DF_data.corr(numeric_only=True)[target]
 
-        corr_ordenado = corr.abs().sort_values(ascending=False).drop(target)
-        top = corr_ordenado.head(top_n)
+        if target in corr.index:
+            corr_ordenado = corr.abs().sort_values(ascending=False).drop(target)
+        else:
+            corr_ordenado = corr.abs().sort_values(ascending=False)
 
-        # Mantener signo real
-        top_signed = corr[top.index]
+        top_indices = corr_ordenado.head(top_n).index
 
-        plt.figure(figsize=(8, 6))
-        top_signed.sort_values().plot(kind='barh')
+        #Recuperar los valores con su signo real (+ o -) y ordenarlos para el gráfico de barras
+        top_signed = corr[top_indices].sort_values(ascending=True)
 
-        plt.title(f'Top {top_n} correlaciones con Churn')
-        plt.xlabel('Correlación')
+        #Configuración estética del gráfico
+        plt.figure(figsize=(10, 6))
+
+        # Asignar color: Rojo para correlación positiva (fomenta el Churn) y Azul para negativa (retención)
+        colores = np.where(top_signed.values >= 0, '#e74c3c', '#3498db')
+
+        # Dibujar gráfico de barras horizontales
+        barras = plt.barh(top_signed.index, top_signed.values, color=colores, edgecolor='black', alpha=0.8)
+
+        # Añadir los valores numéricos al final de cada barra para facilitar la lectura
+        for barra in barras:
+            ancho = barra.get_width()
+            posicion_x = ancho + 0.01 if ancho >= 0 else ancho - 0.05
+            ha_alineacion = 'left' if ancho >= 0 else 'right'
+            plt.text(posicion_x, barra.get_y() + barra.get_height() / 2,
+                     f'{ancho:.2f}',
+                     va='center', ha=ha_alineacion, fontsize=10, fontweight='bold')
+
+        # Línea vertical en el cero para dar equilibrio visual
+        plt.axvline(0, color='gray', linestyle='--', linewidth=0.8)
+
+        # Títulos y etiquetas estilizadas
+        plt.title(f'Top {top_n} Características con Mayor Impacto en el Churn', fontsize=14, fontweight='bold', pad=15)
+        plt.xlabel('Coeficiente de Correlación (Pearson)', fontsize=11, labelpad=10)
+        plt.ylabel('Variables del Dataset', fontsize=11)
+
+        # Ajustar márgenes para que no se corten las etiquetas de texto larguísimas del One-Hot
+        plt.tight_layout()
         plt.show()
 
 
     # -------------------------------------------------------------------------------------------------------------------#
     #8 Generar dataset reducido con la variables fuertemente correlacionadas
+    #El siguiente metodo nos permite generar 1 dataset limpio con las variables fuertemente correlacionadas y variables predefinadas para el modelo IA
 
-    def generar_dataset_reducido(self, target='Churn_Yes', umbral=0.3):
-        print("--- Generando dataset reducido basado en correlación ---")
+    def generar_dataset_reducido(self, target='Churn', umbral=0.25):
+        from pathlib import Path  # Nos aseguramos de tener Path disponible
+        import pandas as pd
 
+        print(f"--- Generando dataset reducido basado en correlación (Umbral: {umbral}) ---")
+
+        # Validar que la variable objetivo exista con el nombre correcto
         if target not in self.__DF_data.columns:
-            print(f"❌ La columna {target} no existe.")
+            print(f"❌ La columna '{target}' no existe.")
+            print("Asegúrate de haber ejecutado 'transformar_target_churn()' primero.")
             return None
 
-        # Calcular correlaciones
+        # Calcular correlaciones (solo numéricas)
         corr = self.__DF_data.corr(numeric_only=True)[target]
 
-        # Seleccionar variables con correlación fuerte
+        # Seleccionar variables con correlación fuerte (usando el umbral absoluto de 0.25)
         variables_fuertes = corr[
             (corr >= umbral) | (corr <= -umbral)
             ].index.tolist()
 
-        # Asegurar que incluya la variable objetivo
-        if target not in variables_fuertes:
-            variables_fuertes.append(target)
+        # Forzar la inclusión del target y de todas las columnas requeridas
+        columnas_obligatorias = [
+            target, 'gender_Male', 'TotalCharges', 'MonthlyCharges',
+            'InternetService_DSL', 'InternetService_No'
+        ]
 
-        print(f"✅ Variables seleccionadas ({len(variables_fuertes)}):")
-        print(variables_fuertes)
+        for col in columnas_obligatorias:
+            if col in self.__DF_data.columns and col not in variables_fuertes:
+                variables_fuertes.append(col)
 
-        # Crear nuevo dataset
-        self.__DF_reducido = self.__DF_data[variables_fuertes].copy()
+        #NUEVA REGLA: Excluir columnas no deseadas explícitamente 🌟
+        columnas_a_quitar = ['PaymentMethod_Electronic check']
+        variables_fuertes = [col for col in variables_fuertes if col not in columnas_a_quitar]
+
+        #ORDENAR COLUMNAS A TU GUSTO
+        orden_deseado_inicio = [
+            'Churn', 'gender_Male', 'tenure', 'MonthlyCharges', 'TotalCharges',
+            'InternetService_No', 'InternetService_DSL'
+        ]
+
+        # Filtramos solo las que realmente existan en 'variables_fuertes' por seguridad
+        columnas_inicio = [col for col in orden_deseado_inicio if col in variables_fuertes]
+
+        # El resto de las variables seleccionadas van al final (conservando el orden que tenían)
+        columnas_resto = [col for col in variables_fuertes if col not in columnas_inicio]
+
+        # Combinamos ambas listas para el orden final definitivo
+        columnas_ordenadas_final = columnas_inicio + columnas_resto
+
+        print(f"✅ Variables seleccionadas finales ordenadas ({len(columnas_ordenadas_final)}):")
+        print(columnas_ordenadas_final)
+
+        # Crear el nuevo dataset reducido con el nuevo orden de columnas
+        self.__DF_reducido = self.__DF_data[columnas_ordenadas_final].copy()
 
         print("\n✅ Dataset reducido creado correctamente")
         print(f"Nuevo tamaño: {self.__DF_reducido.shape[0]} filas x {self.__DF_reducido.shape[1]} columnas")
 
+        # Definir ruta y crear directorios si no existen
         ruta = Path('src/eda/processed/telco_churn_reducido.csv')
-
-        # Crear carpeta si no existe
         ruta.parent.mkdir(parents=True, exist_ok=True)
 
-        # Guardar el DataFrame
+        # Guardar el DataFrame a formato CSV
         self.__DF_reducido.to_csv(ruta, index=False)
 
         print(f'✅ El dataset reducido se ha guardado en: {ruta.resolve()}')
+        print("\n--- Primeros 5 registros del Dataset Reducido (Columnas Ordenadas) ---")
 
+        # Configuración de visualización en consola para el print
+        pd.set_option('display.max_columns', None)
+        pd.set_option('display.width', 1000)
+        print(self.__DF_reducido.head(5))
+        print("=" * 60 + "\n")
+
+        return self.__DF_reducido
     # -------------------------------------------------------------------------------------------------------------------#
-
-    # 9 Matriz de correlación
-    def eda_matriz_correlacion(self):
-        # Validar que el dataset reducido existe
-        if not hasattr(self, '_Clase__DF_reducido') or self.__DF_reducido is None:
-            print("❌ El dataset reducido no ha sido generado aún.")
-            return None
-
-        # Seleccionar columnas numéricas del dataset reducido
-        df_numerico = self.__DF_reducido.select_dtypes(include=['number'])
-
-        if df_numerico.empty:
-            print("⚠️ No hay columnas numéricas en el dataset reducido.")
-            return None
-
-        # Calcular matriz de correlación
-        matriz_correlacion = df_numerico.corr()
-
-        # Graficar heatmap
-        plt.figure(figsize=(10, 8))
-        sns.heatmap(matriz_correlacion, annot=True, cmap='coolwarm', fmt=".2f")
-        plt.title('Matriz de Correlación (Dataset Reducido)')
-        plt.show()
-
-        return matriz_correlacion
-
-    # -------------------------------------------------------------------------------------------------------------------#
-
-    def eda_matriz_correlacion_grafico(self):
-        # 1. Validar que el dataset exista (usando el nombre correcto del atributo privado)
-        if not hasattr(self, "_Clase__DF_reducido") or self.__DF_reducido is None:
-            print("❌ El dataset reducido no ha sido generado aún.")
-            return None
-
-        # 2. Seleccionar columnas numéricas
-        df_numerico = self.__DF_reducido.select_dtypes(include=["number"])
-
-        if df_numerico.empty:
-            print("⚠️ No hay columnas numéricas en el dataset reducido.")
-            return None
-
-        # 3. Calcular matriz de correlación
-        matriz_correlacion = df_numerico.corr()
-
-        # 4. Configurar y graficar el Heatmap
-        plt.figure(figsize=(10, 8))
-
-        # Creamos una máscara para ocultar la mitad superior (opcional, pero se ve más limpio)
-        # import numpy as np
-        # mascara = np.triu(np.ones_like(matriz_correlacion, dtype=bool))
-
-        sns.heatmap(
-            matriz_correlacion,
-            annot=True,  # Muestra los números en los cuadrados
-            cmap="coolwarm",  # Escala de colores (azul frío a rojo cálido)
-            fmt=".2f",  # Redondea a 2 decimales
-            linewidths=0.5,  # Agrega una línea sutil de separación
-            vmin=-1,
-            vmax=1,  # Fuerza la escala de -1 a 1
-            # mask=mascara # Descomenta si usas la máscara
-        )
-
-        plt.title("Matriz de Correlación (Dataset Reducido)", fontsize=14, pad=20)
-        plt.tight_layout()  # Ajusta los márgenes para que no se corten las etiquetas
-        plt.show()
-
-        return matriz_correlacion
-
-    # 10 Histograma para cada columna numérica
-    def eda_histogramas(self):
-        # Genera un histograma para la variable "Number"
-        columna = "Number"
-        if columna in self.__DF_data.select_dtypes(include=['number']).columns:
-            plt.figure(figsize=(8, 5))
-            sns.histplot(self.__DF_data[columna], kde=True, bins=10)
-            plt.title("Histograma variable Número de camisa")
-            plt.xlabel("Número de camisa")
-            plt.ylabel('Cantidad de jugadores por número de camisa')
-            plt.grid(True)
-            plt.tight_layout()
-            plt.show()
-        else:
-            print(f"La columna '{columna}' no existe o no es numérica.")
-
-    # -------------------------------------------------------------------------------------------------------------------#
-
-    # 11 Boxplot
-    def generar_boxplots(self):
-        # Genera un boxplot para la columna numérica age.
-        columna = "Age"
-        if columna in self.__DF_data.select_dtypes(include=['number']).columns:
-            plt.figure(figsize=(8, 5))
-            sns.boxplot(x=self.__DF_data[columna])
-            plt.title("Box plot de edad de jugadores")
-            plt.xlabel("Edad de jugadores")
-            plt.grid(True)
-            plt.tight_layout()
-            plt.show()
-        else:
-            print(f"La columna '{columna}' no existe o no es numérica.")
 
     # -------------------------------------------------------------------------------------------------------------------#
 
     # 12. Método para realizar la limpieza general del dataset
+    #El metodo ejecutar_eda nos permite ejecutar todos los metodos que se crearon anteriormente con cierto formato para interpretarlo.
     def ejecutar_eda(self):
         print("=" * 120)
         print("=" * 120)
@@ -383,39 +418,29 @@ class ProcesadorEDA:  # Creamos la clase ProcesadorEDA la cual nos ayudará a re
         self.gestionar_datos_duplicados()
         print("\n")
         print("=" * 60)
-        print("#5 Aplicar Onehotencoding al dataset")
+        print("5 Trasnformar target Churn")
+        self.transformar_target_churn()
+        print("\n")
+        print("=" * 60)
+        print("#6 Aplicar Onehotencoding al dataset")
         self.aplicar_one_hot_encoding()
         print("\n")
         print("=" * 60)
-        print("#6 Calcular correlaciones")
-        self.calcular_correlacion_con_churn()
+        print("#7 Calcular correlaciones")
+        self.obtener_correlaciones_fuertes()
         print("\n")
         print("=" * 60)
-        print("Grafico de correlaciones")
+        print("#8 Generar Grafico de correlaciones")
         self.grafico_correlaciones_churn()
         print("\n")
         print("=" * 60)
-        print("#8 Generar dataset limpio")
-        print("\n")
+        print("#9 Generar dataset con las principales correlaciones")
         self.generar_dataset_reducido()
-        print("=" * 60)
         print("\n")
-        print("Generar gradico de correlaciones")
-        self.eda_matriz_correlacion_grafico()
-        print("\n")
-        print("Matriz correlación, histograma y boxplot")
-        print("\n")
-        print("=" * 60)
-        self.eda_matriz_correlacion()
-        #self.eda_histogramas()
-        #self.generar_boxplots()
-
-
-
 
 
 # =============================================================================
-# INSTANCIACIÓN CON TU ARCHIVO REAL
+# Ejecucion de la clase por medio del main
 # =============================================================================
 
 if __name__ == "__main__":
@@ -444,5 +469,5 @@ if __name__ == "__main__":
         analisis_churn = ProcesadorEDA(DF_data=df_clientes)
         analisis_churn.ejecutar_eda()
     else:
-        print("❌ ERROR: El archivo no se encuentra en la ruta calculada.")
+        print("ERROR: El archivo no se encuentra en la ruta calculada.")
         print(f"Por favor, verifica que el archivo exista en: {ruta_real_archivo}")
